@@ -1,0 +1,412 @@
+    <!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KawalBumi - Lapor Masalah Lingkungan</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        emerald: { 500: '#10b981', 600: '#059669', 700: '#047857' },
+                        teal: { 50: '#f0fdfa', 500: '#14b8a6', 600: '#0d9488', 700: '#0f766e' },
+                        slate: { 50: '#f8fafc', 800: '#1e293b', 900: '#0f172a' }
+                    },
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts Plus Jakarta Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+        #map { height: 100%; min-height: 200px; width: 100%; z-index: 10; }
+        .modal { display: none; }
+        .modal.active { display: flex; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .bar-fill { animation: growBar 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; transform-origin: left; }
+        @keyframes growBar { 0% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+
+        /* Custom Scrollbar for modern look where visible */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden text-slate-800 bg-slate-50 selection:bg-emerald-200 selection:text-emerald-900">
+
+    <!-- Navbar (Glassmorphism) -->
+    <nav class="bg-white/70 backdrop-blur-xl shadow-sm p-3 md:p-4 z-20 flex justify-between items-center shrink-0 border-b border-white/50">
+        <div class="flex items-center gap-2 md:gap-2.5">
+            <div class="bg-gradient-to-br from-emerald-500 to-teal-600 p-1.5 md:p-1.5 rounded-lg md:rounded-xl shadow-md shrink-0">
+                <svg class="w-5 h-5 md:w-6 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <h1 class="text-lg md:text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-emerald-700 to-teal-700">KawalBumi</h1>
+        </div>
+        
+        <div class="flex items-center gap-2 md:gap-4">
+            <!-- Modern Gradient Button -->
+            <button onclick="handleLaporClick()" class="group bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold py-1.5 px-3 md:py-2 md:px-5 rounded-lg md:rounded-xl shadow-[0_8px_20px_rgba(16,185,129,0.3)] hover:shadow-[0_8px_25px_rgba(16,185,129,0.4)] hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-1.5 md:gap-2 text-[11px] md:text-base border border-emerald-400/50">
+                <svg class="w-4 h-4 md:w-5 md:h-5 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                <span class="hidden sm:inline">Lapor Masalah</span>
+                <span class="sm:hidden">Lapor</span>
+            </button>
+            
+            <!-- Auth Section Guest -->
+            <div id="authSectionGuest" class="block pl-2 md:pl-4 border-l border-gray-200/60">
+                <button onclick="openModal('loginModal')" class="text-emerald-700 font-bold py-1.5 md:py-2 px-2 md:px-4 rounded-lg md:rounded-xl hover:bg-emerald-50 transition-colors text-xs md:text-sm">Masuk</button>
+            </div>
+            
+            <!-- Auth Section User (Gamified Profile) -->
+            <div id="authSectionUser" class="hidden items-center gap-2 md:gap-3 pl-2 md:pl-4 border-l border-gray-200/60">
+                <div class="hidden md:flex flex-col items-end mr-1">
+                    <span id="navUserName" class="text-sm font-bold text-slate-800 leading-tight tracking-tight">Budi Santoso</span>
+                    <span id="userPointsDisplay" class="text-[10px] text-emerald-700 font-bold bg-emerald-50/80 backdrop-blur-sm px-2 py-0.5 rounded-md flex items-center gap-1 border border-emerald-100 shadow-sm mt-0.5">
+                        <span class="text-[9px]">ðŸŒŸ</span> Pahlawan Bumi Lv.2 (350 Poin)
+                    </span>
+                </div>
+                <!-- Profile Avatar -->
+                <div onclick="openModal('profileModal')" class="cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center text-emerald-800 font-extrabold shadow-sm border border-emerald-200 relative shrink-0">
+                    B
+                    <div class="absolute -bottom-1 -right-1 md:-bottom-1.5 md:-right-1.5 bg-gradient-to-r from-amber-400 to-orange-400 text-white text-[8px] md:text-[9px] font-black w-4 h-4 md:w-5 md:h-5 rounded-full flex items-center justify-center border-2 border-white shadow-sm" title="Level 2">2</div>
+                </div>
+                <button onclick="logout()" class="text-[10px] md:text-xs text-gray-400 hover:text-red-500 transition font-semibold hidden sm:block p-1">Keluar</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        <!-- MAP AREA (Left Side) -->
+        <div class="w-full md:w-2/3 h-[40%] md:h-full p-2 md:p-4 flex flex-col relative z-0 shrink-0">
+            <div id="map" class="shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 flex-1 relative z-10 overflow-hidden rounded-xl md:rounded-[1.25rem]"></div>
+            
+            <!-- Floating Vote Stats (Glassmorphism) -->
+            <div id="floatingVoteStats" class="absolute bottom-8 left-8 z-[400] bg-white/70 backdrop-blur-xl p-4 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-white/60 w-56 pointer-events-auto hidden md:flex flex-col gap-2.5 transition-transform hover:scale-[1.02] duration-300">
+                <div class="flex items-center justify-between border-b border-gray-200/50 pb-2.5 mb-1">
+                    <div class="flex items-center gap-2">
+                        <div class="bg-gradient-to-br from-amber-100 to-orange-100 p-1.5 rounded-lg shadow-sm">
+                            <span class="text-[12px]">🔥</span>
+                        </div>
+                        <h4 class="text-[10px] font-extrabold text-slate-800 uppercase tracking-widest">Tren Urgensi</h4>
+                    </div>
+                </div>
+                <div id="voteStatsContainer" class="flex flex-col gap-2">
+                    <!-- Injected via JS -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- SIDEBAR AREA (Right Side) -->
+        <div class="w-full md:w-1/3 h-[60%] md:h-full bg-slate-50/50 border-t md:border-t-0 md:border-l border-gray-200/60 flex flex-col relative z-10 shadow-[0_-10px_30px_rgba(0,0,0,0.02)] md:shadow-[-10px_0_30px_rgba(0,0,0,0.02)]">
+            
+            <!-- Filters -->
+            <div class="p-3 md:p-4 border-b border-gray-200/60 bg-white/40 backdrop-blur-md flex flex-col gap-2.5 md:gap-3 shrink-0 z-20">
+                <!-- Status Filter -->
+                <div class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+                    <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest shrink-0 mr-1">Status:</span>
+                    <button onclick="setFilterStatus('All')" id="btnStatusAll" class="px-3 py-1.5 text-[10px] font-bold rounded-full bg-slate-800 text-white shadow-md transition-all whitespace-nowrap">Semua</button>
+                    <button onclick="setFilterStatus('Red')" id="btnStatusRed" class="px-3 py-1.5 text-[10px] font-bold rounded-full bg-white border border-gray-200 text-slate-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all whitespace-nowrap shadow-sm">ðŸ”´ Belum Selesai</button>
+                    <button onclick="setFilterStatus('Yellow')" id="btnStatusYellow" class="px-3 py-1.5 text-[10px] font-bold rounded-full bg-white border border-gray-200 text-slate-600 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 transition-all whitespace-nowrap shadow-sm">ðŸŸ¡ Kerja Bakti</button>
+                    <button onclick="setFilterStatus('Green')" id="btnStatusGreen" class="px-3 py-1.5 text-[10px] font-bold rounded-full bg-white border border-gray-200 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-all whitespace-nowrap shadow-sm">ðŸŸ¢ Selesai</button>
+                </div>
+                  <!-- Category Filter -->
+                <div class="flex items-center gap-2 overflow-x-auto hide-scrollbar">
+                    <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest shrink-0 mr-1">Tipe:</span>
+                    <button onclick="setFilterCategory('All')" id="btnCatAll" class="px-3 py-1.5 text-[10px] font-bold rounded-full bg-slate-800 text-white shadow-md transition-all whitespace-nowrap">Semua</button>
+                    <button onclick="setFilterCategory('Sampah')" id="btnCatSampah" class="px-3 py-1.5 text-[10px] font-bold rounded-full bg-white border border-gray-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300 transition-all whitespace-nowrap shadow-sm">ðŸ—‘ï¸ Sampah</button>
+                    <button onclick="setFilterCategory('Sungai')" id="btnCatSungai" class="px-3 py-1.5 text-[10px] font-bold rounded-full bg-white border border-gray-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300 transition-all whitespace-nowrap shadow-sm">ðŸŒŠ Sungai</button>
+                    <button onclick="setFilterCategory('Pohon')" id="btnCatPohon" class="px-3 py-1.5 text-[10px] font-bold rounded-full bg-white border border-gray-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300 transition-all whitespace-nowrap shadow-sm">ðŸŒ³ Pohon</button>
+                    <button onclick="setFilterCategory('Polusi')" id="btnCatPolusi" class="px-3 py-1.5 text-[10px] font-bold rounded-full bg-white border border-gray-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300 transition-all whitespace-nowrap shadow-sm">ðŸ’¨ Polusi</button>
+                    <button onclick="setFilterCategory('Bencana Alam')" id="btnCatBencana" class="px-3 py-1.5 text-[10px] font-bold rounded-full bg-white border border-gray-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300 transition-all whitespace-nowrap shadow-sm">ðŸŒ‹ Bencana</button>
+                </div>
+            </div>
+            
+            <!-- Scrollable Cards -->
+            <div class="flex-1 overflow-y-auto p-4 pt-5 flex flex-col gap-4 hide-scrollbar" id="reportList">
+                <!-- Cards injected via JS -->
+            </div>
+            
+        </div>
+    </main>
+
+    <!-- MODAL: Login & Register -->
+    <div id="loginModal" class="modal fixed inset-0 bg-slate-900/40 z-[100] items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col transform scale-100 transition-transform">
+            <div class="flex justify-between items-center p-6 border-b border-gray-100 bg-white shrink-0">
+                <h2 id="loginModalTitle" class="text-xl font-extrabold text-slate-800">Masuk Akun</h2>
+                <button onclick="closeModal('loginModal')" class="text-gray-400 hover:text-gray-700 transition-colors bg-gray-50 hover:bg-gray-100 p-2 rounded-full">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <!-- Tabs -->
+            <div class="flex border-b border-gray-100 bg-slate-50/50">
+                <button type="button" onclick="toggleAuthMode('login')" id="tabLogin" class="flex-1 py-3 text-sm font-extrabold border-b-2 border-emerald-500 text-emerald-700 transition-colors">Masuk</button>
+                <button type="button" onclick="toggleAuthMode('register')" id="tabRegister" class="flex-1 py-3 text-sm font-extrabold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-colors">Daftar Baru</button>
+            </div>
+
+            <form class="p-6 flex flex-col gap-4 bg-slate-50/30" onsubmit="handleAuth(event)">
+                <div id="authNameField" class="hidden">
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Nama Lengkap</label>
+                    <input type="text" id="inputAuthName" placeholder="Contoh: Budi Santoso" class="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all bg-white shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Email</label>
+                    <input type="email" id="inputAuthEmail" required value="budi@email.com" class="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all bg-white shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Password</label>
+                    <input type="password" id="inputAuthPassword" required value="password123" class="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all bg-white shadow-sm">
+                </div>
+                <div class="bg-emerald-50/80 border border-emerald-100 rounded-xl p-3 flex gap-3 items-start mt-1">
+                    <span class="text-emerald-500 mt-0.5">🌟</span>
+                    <p id="authPromoText" class="text-[11px] text-emerald-800 font-medium leading-relaxed">Dengan masuk, Anda dapat mengumpulkan Poin Kontribusi sebagai Pahlawan Lingkungan!</p>
+                </div>
+                <button type="submit" id="authSubmitBtn" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-3.5 rounded-xl shadow-[0_8px_20px_rgba(16,185,129,0.25)] hover:shadow-[0_8px_25px_rgba(16,185,129,0.4)] hover:-translate-y-0.5 transition-all duration-300 mt-1">
+                    Masuk Sekarang
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Profil Warga -->
+    <div id="profileModal" class="modal fixed inset-0 bg-slate-900/60 z-[100] items-center justify-center p-4 backdrop-blur-md transition-opacity">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col transform scale-100 transition-transform">
+            <div class="flex justify-between items-center p-5 border-b border-gray-100 bg-white shrink-0">
+                <h2 class="text-xl font-extrabold text-slate-800">Profil Warga</h2>
+                <button onclick="closeModal('profileModal')" class="text-gray-400 hover:text-gray-700 transition-colors bg-gray-50 hover:bg-gray-100 p-2 rounded-full">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-6 flex flex-col items-center text-center bg-slate-50/50 relative">
+                <!-- Big Avatar -->
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center text-emerald-800 font-extrabold text-3xl shadow-md border-2 border-white relative mb-3">
+                    <span id="profileAvatarInitial">B</span>
+                    <div id="profileLevelBadge" class="absolute -bottom-2 -right-2 bg-gradient-to-r from-amber-400 to-orange-400 text-white text-[11px] font-black w-7 h-7 rounded-full flex items-center justify-center border-[3px] border-white shadow-md">2</div>
+                </div>
+                <h3 id="profileName" class="text-lg font-bold text-slate-800">Budi Santoso</h3>
+                <p id="profileEmail" class="text-xs font-semibold text-slate-400 mb-5">budi@email.com</p>
+
+                <!-- Level Progress -->
+                <div class="w-full bg-white p-4 rounded-2xl border border-gray-100 shadow-[0_4px_15px_rgba(0,0,0,0.02)] mb-4 text-left">
+                    <div class="flex justify-between items-end mb-2">
+                        <div>
+                            <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-0.5">Pangkat Saat Ini</p>
+                            <p id="profileRankText" class="text-sm font-bold text-emerald-700">Pahlawan Bumi Lv.2</p>
+                        </div>
+                        <div class="text-right">
+                            <span id="profilePointsText" class="text-sm font-black text-slate-800">350</span>
+                            <span class="text-[10px] text-slate-400 font-bold">/ 500 Poin</span>
+                        </div>
+                    </div>
+                    <!-- Progress Bar -->
+                    <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                        <div id="profileProgressBar" class="h-full bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full" style="width: 70%"></div>
+                    </div>
+                </div>
+
+                <!-- Mini Stats -->
+                <div class="grid grid-cols-3 gap-2 w-full mb-1">
+                    <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center">
+                        <span class="text-lg mb-1">📢</span>
+                        <span class="text-lg font-black text-slate-800">2</span>
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Laporan</span>
+                    </div>
+                    <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center">
+                        <span class="text-lg mb-1">👍</span>
+                        <span class="text-lg font-black text-slate-800">14</span>
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Vote</span>
+                    </div>
+                    <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center">
+                        <span class="text-lg mb-1">🤝</span>
+                        <span class="text-lg font-black text-slate-800">3</span>
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Aksi</span>
+                    </div>
+                </div>
+            </div>
+            <div class="p-5 bg-white border-t border-gray-100">
+                <button onclick="logout()" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-3 rounded-xl transition-colors border border-rose-100 shadow-sm">
+                    Keluar dari Akun
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Lapor Masalah -->
+    <div id="laporModal" class="modal fixed inset-0 bg-slate-900/40 z-[100] items-center justify-center p-3 md:p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-[1.5rem] shadow-2xl w-full max-w-lg max-h-[95vh] overflow-y-auto flex flex-col relative hide-scrollbar">
+            <div class="flex justify-between items-center p-5 md:p-6 border-b border-gray-100 shrink-0 bg-white/95 backdrop-blur-md sticky top-0 z-20">
+                <h2 class="text-lg md:text-xl font-extrabold text-slate-800">Lapor Masalah Lingkungan</h2>
+                <button onclick="closeModal('laporModal')" class="text-gray-400 hover:text-gray-700 transition-colors bg-gray-50 hover:bg-gray-100 p-2 rounded-full">
+                    <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-800 text-[11px] md:text-xs px-5 md:px-6 py-3 font-semibold border-b border-emerald-100/50 flex items-center gap-2">
+                🌟 Dapatkan <b class="font-bold bg-emerald-100 px-1.5 py-0.5 rounded text-emerald-900">+10 Poin Kontribusi</b> dengan mengirim laporan valid!
+            </div>
+            <form id="laporForm" class="p-5 md:p-6 flex flex-col gap-4 md:gap-5 bg-slate-50/30" onsubmit="submitForm(event)">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Judul Masalah</label>
+                    <input type="text" id="inputTitle" required class="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all bg-white shadow-sm" placeholder="Contoh: Tumpukan Sampah di Jalan X">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Kategori</label>
+                    <select id="inputCategory" required class="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all bg-white shadow-sm cursor-pointer appearance-none">
+                        <option value="Sampah">Sampah Liar</option>
+                        <option value="Sungai">Pencemaran Sungai</option>
+                        <option value="Pohon">Pohon Tumbang/Lapuk</option>
+                        <option value="Polusi">Polusi Asap/Udara</option>
+                        <option value="Bencana Alam">Bencana Alam</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Lokasi</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="inputLocation" readonly required placeholder="Pilih lokasi di peta..." class="w-full border border-gray-200 bg-gray-50/80 rounded-xl p-3 text-gray-600 text-sm outline-none focus:ring-4 focus:ring-emerald-500/20 cursor-not-allowed font-medium">
+                        <button type="button" onclick="openMapPicker()" class="bg-white hover:bg-gray-50 border border-gray-200 text-slate-700 px-4 rounded-xl text-sm font-bold transition-all shrink-0 flex items-center gap-1.5 shadow-sm hover:shadow-md hover:-translate-y-0.5">
+                            📍 Peta
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Unggah Foto</label>
+                    <input type="file" id="inputFile" accept="image/*" class="w-full border border-gray-200 rounded-xl p-2 text-sm bg-white shadow-sm file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all cursor-pointer">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Deskripsi</label>
+                    <textarea id="inputDesc" rows="3" required class="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all bg-white shadow-sm" placeholder="Jelaskan detail masalahnya..."></textarea>
+                </div>
+                <div class="pt-2 border-t border-gray-100 mt-2 pb-2">
+                    <button type="submit" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-3.5 rounded-xl shadow-[0_8px_20px_rgba(16,185,129,0.25)] hover:shadow-[0_8px_25px_rgba(16,185,129,0.4)] hover:-translate-y-0.5 transition-all duration-300">
+                        Kirim Laporan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Map Picker with GPS -->
+    <div id="mapPickerModal" class="modal fixed inset-0 bg-slate-900/60 z-[110] items-center justify-center p-4 backdrop-blur-md transition-opacity">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden border border-white/20">
+            <div class="flex justify-between items-center p-5 border-b border-gray-100 bg-white shrink-0">
+                <h2 class="text-xl font-extrabold text-slate-800">Tentukan Lokasi</h2>
+                <button type="button" onclick="closeModal('mapPickerModal')" class="text-gray-400 hover:text-gray-700 transition-colors bg-gray-50 hover:bg-gray-100 p-2 rounded-full">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <div class="w-full h-[400px] bg-gray-100 relative">
+                <div id="pickerMap" class="w-full h-full z-10"></div>
+                <!-- GPS BUTTON -->
+                <button type="button" onclick="locateUser()" class="absolute bottom-5 right-5 z-[400] bg-white border border-gray-100 p-3 rounded-2xl shadow-xl text-slate-700 hover:text-blue-600 hover:bg-blue-50 transition-all transform active:scale-95 hover:-translate-y-1 group" title="Gunakan Lokasi Saya">
+                    <svg class="w-6 h-6 group-hover:animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                </button>
+            </div>
+            
+            <div class="p-3 bg-amber-50 border-b border-amber-100 text-amber-800 text-xs font-semibold text-center flex items-center justify-center gap-2">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span class="truncate tracking-wide">Geser peta untuk memindahkan pin lokasi.</span>
+            </div>
+
+            <div class="p-5 bg-white">
+                <button type="button" onclick="confirmLocation()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 rounded-xl shadow-[0_8px_20px_rgba(0,0,0,0.15)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.2)] hover:-translate-y-0.5 transition-all duration-300">
+                    Konfirmasi Titik Lokasi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Detail Laporan & Komentar -->
+    <div id="detailModal" class="modal fixed inset-0 bg-slate-900/60 z-[100] items-center justify-center p-2 md:p-4 backdrop-blur-md transition-opacity">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[95vh] overflow-y-auto flex flex-col relative hide-scrollbar transform scale-100 transition-transform">
+            <!-- Close Button -->
+            <button onclick="closeModal('detailModal')" class="absolute top-4 right-4 bg-white/20 backdrop-blur-md text-white rounded-full p-2 hover:bg-white/40 transition-colors z-20 border border-white/30 shadow-lg">
+                <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            
+            <div id="detailImage" class="w-full h-40 md:h-56 bg-gray-200 bg-cover bg-center shrink-0 border-b border-gray-100 relative">
+                <!-- Overlay Gradient -->
+                <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+            </div>
+            
+            <div class="p-4 md:p-6 flex flex-col gap-4 md:gap-5 bg-slate-50/20">
+                <div class="flex items-start justify-between gap-4 -mt-10 md:-mt-12 relative z-10">
+                    <h2 id="detailTitle" class="text-lg md:text-xl font-extrabold text-white leading-tight drop-shadow-md">Title</h2>
+                </div>
+                
+                <div class="flex flex-wrap gap-2 mt-2">
+                    <span id="detailBadge" class="px-3 py-1.5 text-[10px] font-bold rounded-full shadow-sm uppercase tracking-wider">Status</span>
+                    <span id="detailCatBadge" class="px-3 py-1.5 text-[10px] font-bold rounded-full bg-white border border-gray-200 text-slate-600 shadow-sm uppercase tracking-wider">Kategori</span>
+                </div>
+                
+                <div class="flex items-center gap-5 text-xs text-slate-500 font-semibold border-b border-gray-100 pb-4">
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-[10px]">👤</div>
+                        <span id="detailAuthor">Author</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        <span id="detailDate">Date</span>
+                    </div>
+                </div>
+
+                <p id="detailDesc" class="text-sm text-slate-700 leading-relaxed font-medium"></p>
+
+                <!-- Action Section -->
+                <div class="grid grid-cols-2 gap-3 pb-5 border-b border-gray-100 pt-2">
+                    <button id="voteBtn" onclick="handleVoteClick()" class="group flex items-center justify-center gap-2 py-3 px-4 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold rounded-xl transition-all border border-teal-200 shadow-sm hover:shadow-md hover:-translate-y-0.5">
+                        <!-- Content injected via JS -->
+                    </button>
+                    <button id="volunteerBtn" onclick="handleVolunteer()" class="group flex items-center justify-center gap-2 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5">
+                        <!-- Content injected via JS -->
+                    </button>
+                </div>
+
+                <!-- Comments Section -->
+                <div class="flex flex-col gap-4">
+                    <h3 class="text-sm font-extrabold text-slate-800 flex items-center gap-2 uppercase tracking-wide">
+                        <span class="bg-blue-100 text-blue-600 p-1 rounded-lg">💬</span>
+                        Komentar Warga
+                    </h3>
+                    
+                    <div id="commentsList" class="flex flex-col gap-3 max-h-48 overflow-y-auto pr-2 hide-scrollbar">
+                        <!-- Comments injected here -->
+                    </div>
+
+                    <!-- Add Comment -->
+                    <form onsubmit="submitComment(event)" class="mt-2 flex gap-2 bg-white p-2 rounded-2xl border border-gray-200 shadow-sm focus-within:ring-2 focus-within:ring-emerald-500/30 focus-within:border-emerald-300 transition-all">
+                        <input type="text" id="inputComment" placeholder="Tulis tanggapan Anda..." required class="flex-1 bg-transparent px-3 text-sm outline-none font-medium placeholder-slate-400">
+                        <button type="submit" class="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow-md">Kirim</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-slate-800/95 backdrop-blur-md text-white px-5 py-4 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.2)] opacity-0 transition-all duration-400 pointer-events-none z-[200] flex items-center gap-3 transform translate-y-4 border border-slate-700">
+        <div class="bg-emerald-500/20 p-1.5 rounded-full text-emerald-400">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+        </div>
+        <span id="toastMsg" class="font-bold text-sm tracking-wide">Berhasil!</span>
+    </div>
+
+    <script src="js/db.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
