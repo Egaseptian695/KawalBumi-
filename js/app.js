@@ -221,9 +221,18 @@ function updateActionUI(r) {
         }
         voteBtn.onclick = handleVoteClick; 
         
-        volBtn.innerHTML = `<span class="group-hover:rotate-12 transition-transform">🤝</span> Jadi Relawan`;
-        volBtn.className = "group flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-xl transition-all shadow-md hover:shadow-[0_8px_20px_rgba(16,185,129,0.3)] hover:-translate-y-0.5 cursor-pointer";
-        volBtn.onclick = handleVolunteer;
+        if (!r.volunteerList) r.volunteerList = [];
+        const isVolunteered = isLoggedIn && r.volunteerList.includes(currentUser.email);
+        
+        if (isVolunteered) {
+            volBtn.innerHTML = `🤝 Sudah Jadi Relawan`;
+            volBtn.className = "group flex items-center justify-center gap-2 py-3 px-4 bg-teal-50 text-teal-700 font-extrabold rounded-xl transition-all border border-teal-200 shadow-sm cursor-default";
+            volBtn.onclick = () => showToast("Anda sudah terdaftar sebagai relawan!");
+        } else {
+            volBtn.innerHTML = `<span class="group-hover:rotate-12 transition-transform">🤝</span> Jadi Relawan`;
+            volBtn.className = "group flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-xl transition-all shadow-md hover:shadow-[0_8px_20px_rgba(16,185,129,0.3)] hover:-translate-y-0.5 cursor-pointer";
+            volBtn.onclick = handleVolunteer;
+        }
     }
 }
 
@@ -257,6 +266,13 @@ function renderComments(comments) {
         `;
         list.appendChild(div);
     });
+}
+
+function checkCommentAuth(e) {
+    if (!isLoggedIn) {
+        e.target.blur();
+        requireAuth(() => {});
+    }
 }
 
 function submitComment(e) {
@@ -302,7 +318,14 @@ function doVolunteer() {
     const r = reports.find(x => x.id === currentReportId);
     if (r.status === 'Green') return; 
     
+    if (!r.volunteerList) r.volunteerList = [];
+    if (r.volunteerList.includes(currentUser.email)) {
+        showToast("Anda sudah terdaftar sebagai relawan!");
+        return;
+    }
+    
     r.volunteers++;
+    r.volunteerList.push(currentUser.email);
     if(r.status === 'Red') r.status = 'Yellow'; 
     
     saveDB();
@@ -336,7 +359,8 @@ function submitForm(e) {
             lat: parseFloat(loc[0]), lng: parseFloat(loc[1]),
             desc: document.getElementById('inputDesc').value,
             image: imageUrl,
-            comments: []
+            comments: [],
+            volunteerList: []
         };
         reports.unshift(newReport);
         saveDB();

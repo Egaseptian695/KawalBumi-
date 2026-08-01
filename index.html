@@ -1,4 +1,4 @@
-    <!DOCTYPE html>
+﻿    <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -100,7 +100,7 @@
                         <div class="bg-gradient-to-br from-amber-100 to-orange-100 p-1.5 rounded-lg shadow-sm">
                             <span class="text-[12px]">🔥</span>
                         </div>
-                        <h4 class="text-[10px] font-extrabold text-slate-800 uppercase tracking-widest">Tren Urgensi</h4>
+                        <h4 class="text-[10px] font-extrabold text-slate-800 uppercase tracking-widest">Statistik</h4>
                     </div>
                 </div>
                 <div id="voteStatsContainer" class="flex flex-col gap-2">
@@ -143,7 +143,7 @@
     </main>
 
     <!-- MODAL: Login & Register -->
-    <div id="loginModal" class="modal fixed inset-0 bg-slate-900/40 z-[100] items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+    <div id="loginModal" class="modal fixed inset-0 bg-slate-900/40 z-[150] items-center justify-center p-4 backdrop-blur-sm transition-opacity">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col transform scale-100 transition-transform">
             <div class="flex justify-between items-center p-6 border-b border-gray-100 bg-white shrink-0">
                 <h2 id="loginModalTitle" class="text-xl font-extrabold text-slate-800">Masuk Akun</h2>
@@ -165,11 +165,16 @@
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Email</label>
-                    <input type="email" id="inputAuthEmail" required value="budi@email.com" class="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all bg-white shadow-sm">
+                    <input type="email" id="inputAuthEmail" required placeholder="Masukkan email Anda" class="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all bg-white shadow-sm">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Password</label>
-                    <input type="password" id="inputAuthPassword" required value="password123" class="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all bg-white shadow-sm">
+                    <div class="relative">
+                        <input type="password" id="inputAuthPassword" required placeholder="Masukkan password" class="w-full border border-gray-200 rounded-xl p-3 pr-10 text-sm focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all bg-white shadow-sm">
+                        <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-600 transition-colors focus:outline-none">
+                            <svg id="eyeIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="bg-emerald-50/80 border border-emerald-100 rounded-xl p-3 flex gap-3 items-start mt-1">
                     <span class="text-emerald-500 mt-0.5">🌟</span>
@@ -388,7 +393,7 @@
 
                     <!-- Add Comment -->
                     <form onsubmit="submitComment(event)" class="mt-2 flex gap-2 bg-white p-2 rounded-2xl border border-gray-200 shadow-sm focus-within:ring-2 focus-within:ring-emerald-500/30 focus-within:border-emerald-300 transition-all">
-                        <input type="text" id="inputComment" placeholder="Tulis tanggapan Anda..." required class="flex-1 bg-transparent px-3 text-sm outline-none font-medium placeholder-slate-400">
+                        <input type="text" id="inputComment" onfocus="checkCommentAuth(event)" placeholder="Tulis tanggapan Anda..." required class="flex-1 bg-transparent px-3 text-sm outline-none font-medium placeholder-slate-400">
                         <button type="submit" class="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow-md">Kirim</button>
                     </form>
                 </div>
